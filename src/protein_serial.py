@@ -50,17 +50,24 @@ def hitung_interaksi_serial(koordinat, threshold):
 def main():
     # Path relatif dari root project (protein-mpi)
     nama_file = "data/1LJ4.pdb"
-    threshold = 5.0
+    threshold = 5.0 
 
     koordinat = baca_koordinat(nama_file)
     n = len(koordinat)
 
     pasangan_dihitung, jumlah_interaksi, waktu = hitung_interaksi_serial(koordinat, threshold)
 
+    print("==========================================")
+    print("MPI SERIAL INTERACTION")
+    print("==========================================")
+    print(f"Dataset : {nama_file}")
     print(f"Jumlah atom                : {n}")
+    print(f"Jumlah pasangan            : {pasangan_dihitung}")
+    print(f"Threshold interaksi        : {threshold} Angstrom")
+    print("------------------------------------------") 
     print(f"Pasangan dihitung          : {pasangan_dihitung}")
     print(f"Jumlah interaksi           : {jumlah_interaksi}")
-    print(f"Waktu komputasi serial     : {waktu:.6f} detik")
+    print(f"Runtime serial             : {waktu:.6f} detik")
 
 
 if __name__ == "__main__":
