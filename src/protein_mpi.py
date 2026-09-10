@@ -3,9 +3,6 @@ import math
 from pathlib import Path
 
 
-# ============================================================
-# MEMBACA KOORDINAT ATOM DARI FILE PDB
-# ============================================================
 def baca_koordinat(nama_file):
     koordinat = []
 
@@ -18,18 +15,13 @@ def baca_koordinat(nama_file):
                     z = float(baris[46:54].strip())
 
                     koordinat.append((x, y, z))
-
                 except ValueError:
                     continue
 
     return koordinat
 
 
-# ============================================================
-# MENENTUKAN RANGE PEKERJAAN SETIAP PROCESS
-# ============================================================
 def tentukan_range(n, rank, size):
-
     total_pairs = n * (n - 1) // 2
 
     def pasangan_sebelum(i):
@@ -38,12 +30,10 @@ def tentukan_range(n, rank, size):
     target_start = total_pairs * rank // size
     target_end = total_pairs * (rank + 1) // size
 
-    # Mencari indeks awal
     low = 0
     high = n
 
     while low < high:
-
         mid = (low + high) // 2
 
         if pasangan_sebelum(mid) < target_start:
@@ -53,12 +43,10 @@ def tentukan_range(n, rank, size):
 
     start_i = low
 
-    # Mencari indeks akhir
     low = 0
     high = n
 
     while low < high:
-
         mid = (low + high) // 2
 
         if pasangan_sebelum(mid) < target_end:
@@ -71,16 +59,7 @@ def tentukan_range(n, rank, size):
     return start_i, end_i
 
 
-# ============================================================
-# MENGHITUNG INTERAKSI ATOM
-# ============================================================
-def hitung_interaksi_lokal(
-    koordinat,
-    start_i,
-    end_i,
-    threshold
-):
-
+def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
     n = len(koordinat)
 
     jumlah_interaksi = 0
@@ -112,141 +91,110 @@ def hitung_interaksi_lokal(
     return pasangan_dihitung, jumlah_interaksi
 
 
-# ============================================================
-# PROGRAM UTAMA
-# ============================================================
 def main():
 
-    # --------------------------------------------------------
-    # INISIALISASI MPI
-    # --------------------------------------------------------
     comm = MPI.COMM_WORLD
 
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-
-    # --------------------------------------------------------
-    # FILE DATASET
-    # --------------------------------------------------------
+    # Lokasi file dataset
     project_root = Path(__file__).resolve().parents[1]
 
     nama_file = project_root / "data" / "1LJ4.pdb"
 
     threshold = 5.0
 
+    # ==========================================
+    # PROCESS 0 MEMBACA DATASET
+    # ==========================================
 
-    # --------------------------------------------------------
-    # PROCESS 0 MEMBACA DATA
-    # --------------------------------------------------------
     if rank == 0:
-
         koordinat = baca_koordinat(nama_file)
-
     else:
-
         koordinat = None
 
+    # ==========================================
+    # DISTRIBUSI DATA KE SEMUA PROCESS
+    # ==========================================
 
-    # --------------------------------------------------------
-    # MEMBAGIKAN DATA KE SEMUA PROCESS
-    # --------------------------------------------------------
-    koordinat = comm.bcast(
-        koordinat,
-        root=0
-    )
+    koordinat = comm.bcast(koordinat, root=0)
 
     n = len(koordinat)
 
     total_pairs = n * (n - 1) // 2
 
+    # ==========================================
+    # PEMBAGIAN WORKLOAD
+    # ==========================================
 
-    # --------------------------------------------------------
-    # MEMBAGI WORKLOAD
-    # --------------------------------------------------------
     start_i, end_i = tentukan_range(
         n,
         rank,
         size
     )
 
+    # Hitung jumlah pasangan yang menjadi
+    # tanggung jawab process ini
 
-    # Jumlah pasangan yang dikerjakan process ini
     local_pairs = 0
 
     for i in range(start_i, min(end_i, n)):
         local_pairs += n - i - 1
 
+    # ==========================================
+    # MULAI PERHITUNGAN
+    # ==========================================
 
-    # --------------------------------------------------------
-    # SINKRONISASI
-    # --------------------------------------------------------
     comm.Barrier()
 
     waktu_mulai = MPI.Wtime()
 
-
-    # --------------------------------------------------------
-    # PERHITUNGAN PARALEL
-    # --------------------------------------------------------
-    local_pairs_count, local_interactions = (
-        hitung_interaksi_lokal(
-            koordinat,
-            start_i,
-            end_i,
-            threshold
-        )
+    local_pairs_count, local_interactions = hitung_interaksi_lokal(
+        koordinat,
+        start_i,
+        end_i,
+        threshold
     )
-
-
-    # --------------------------------------------------------
-    # SELESAI PERHITUNGAN
-    # --------------------------------------------------------
-    comm.Barrier()
 
     waktu_selesai = MPI.Wtime()
 
     local_runtime = waktu_selesai - waktu_mulai
 
+    # ==========================================
+    # KUMPULKAN HASIL
+    # ==========================================
 
-    # --------------------------------------------------------
-    # MENGGABUNGKAN HASIL
-    # --------------------------------------------------------
-
-    # Total interaksi
     total_interactions = comm.reduce(
         local_interactions,
         op=MPI.SUM,
         root=0
     )
 
-
-    # Total pasangan
     total_pairs_counted = comm.reduce(
         local_pairs_count,
         op=MPI.SUM,
         root=0
     )
 
-
-    # Runtime terlama
     runtime_mpi = comm.reduce(
         local_runtime,
         op=MPI.MAX,
         root=0
     )
 
+    # Kumpulkan pasangan dan interaksi
+    # masing-masing process
 
-    # Mengumpulkan jumlah pasangan setiap process
-    all_pairs = comm.gather(
-        local_pairs,
+    process_results = comm.gather(
+        (local_pairs_count, local_interactions),
         root=0
     )
 
-
-    # --------------------------------------------------------
+    # ==========================================
     # OUTPUT
-    # --------------------------------------------------------
+    # ==========================================
+
     if rank == 0:
 
         print()
@@ -254,31 +202,35 @@ def main():
         print("        MPI PROTEIN INTERACTION")
         print("==============================================")
 
-        print(f"Dataset              : data/1LJ4.pdb")
+        print(f"Dataset              : data/{nama_file.name}")
         print(f"Jumlah atom          : {n}")
         print(f"Jumlah pasangan      : {total_pairs}")
         print(f"Threshold Interaksi  : {threshold:.1f} Angstrom")
         print(f"Jumlah process       : {size}")
 
         print("----------------------------------------------")
+        print("HASIL SETIAP PROCESS")
+        print("----------------------------------------------")
 
-        # Menampilkan workload setiap process
         for i in range(size):
 
+            pairs, interactions = process_results[i]
+
             print(
-                f"Process {i:<13} : "
-                f"{all_pairs[i]} pasangan"
+                f"Process {i:<8} : "
+                f"{pairs:>8} pasangan | "
+                f"{interactions:>6} interaksi"
             )
 
         print("----------------------------------------------")
 
         print(
-            f"Pasangan dihitung    : "
+            f"Total pasangan       : "
             f"{total_pairs_counted}"
         )
 
         print(
-            f"Jumlah interaksi     : "
+            f"Total interaksi      : "
             f"{total_interactions}"
         )
 
@@ -290,8 +242,5 @@ def main():
         print("==============================================")
 
 
-# ============================================================
-# EKSEKUSI
-# ============================================================
 if __name__ == "__main__":
     main()
