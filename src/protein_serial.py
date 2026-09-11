@@ -2,11 +2,10 @@ import math
 import time
 
 
-def baca_koordinat(nama_file):
-    """Membaca file PDB dan mengembalikan daftar koordinat (x, y, z)."""
+def baca_koordinat(data_pdb):
     koordinat = []
 
-    with open(nama_file, "r") as f:
+    with open(data_pdb, "r") as f:
         for baris in f:
             if baris.startswith("ATOM"):
                 x = float(baris[30:38].strip())
@@ -24,18 +23,15 @@ def hitung_interaksi_serial(koordinat, threshold):
     pasangan_dihitung = 0
     jumlah_interaksi = 0
 
-    # Pengukuran waktu dimulai setelah pembacaan file selesai
+    #pengukuran waktu dimulai setelah pembacaan file selesai
     waktu_mulai = time.perf_counter()
 
     for i in range(n):
-
         xi, yi, zi = koordinat[i]
-
         for j in range(i + 1, n):
-
             xj, yj, zj = koordinat[j]
 
-            # Jarak Euclidean
+            #jarak euclidean
             dx = xi - xj
             dy = yi - yj
             dz = zi - zj
@@ -48,7 +44,7 @@ def hitung_interaksi_serial(koordinat, threshold):
 
             pasangan_dihitung += 1
 
-            # Interaksi jika jarak <= threshold
+            #innteraksi jika jarak <= threshold
             if jarak <= threshold:
                 jumlah_interaksi += 1
 
@@ -61,10 +57,10 @@ def hitung_interaksi_serial(koordinat, threshold):
 
 def main():
 
-    nama_file = "data/1LJ4.pdb"
+    data_pdb = "data/1LJ4.pdb"
     threshold = 5.0
 
-    koordinat = baca_koordinat(nama_file)
+    koordinat = baca_koordinat(data_pdb)
 
     n = len(koordinat)
 
@@ -80,7 +76,7 @@ def main():
     print("        SERIAL PROTEIN INTERACTION")
     print("==============================================")
 
-    print(f"Dataset              : {nama_file}")
+    print(f"Dataset              : {data_pdb}")
     print(f"Jumlah atom          : {n}")
     print(f"Jumlah pasangan      : {pasangan_dihitung}")
     print(f"Threshold Interaksi  : {threshold:.1f} Angstrom")
