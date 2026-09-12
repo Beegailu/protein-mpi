@@ -1,7 +1,6 @@
 import math
 import time
 
-
 def baca_koordinat(data_pdb):
     koordinat = []
 
@@ -13,9 +12,7 @@ def baca_koordinat(data_pdb):
                 z = float(baris[46:54].strip())
 
                 koordinat.append((x, y, z))
-
     return koordinat
-
 
 def hitung_interaksi_serial(koordinat, threshold):
     n = len(koordinat)
@@ -41,7 +38,6 @@ def hitung_interaksi_serial(koordinat, threshold):
                 dy * dy +
                 dz * dz
             )
-
             pasangan_dihitung += 1
 
             #innteraksi jika jarak <= threshold
@@ -49,7 +45,6 @@ def hitung_interaksi_serial(koordinat, threshold):
                 jumlah_interaksi += 1
 
     waktu_selesai = time.perf_counter()
-
     waktu = waktu_selesai - waktu_mulai
 
     return pasangan_dihitung, jumlah_interaksi, waktu

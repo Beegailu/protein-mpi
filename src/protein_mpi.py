@@ -2,10 +2,8 @@ from mpi4py import MPI
 import math
 from pathlib import Path
 
-
 def baca_koordinat(data_pdb):
     koordinat = []
-
     with open(data_pdb, "r", encoding="utf-8") as f:
         for baris in f:
             if baris.startswith("ATOM"):
@@ -18,7 +16,6 @@ def baca_koordinat(data_pdb):
                 except ValueError:
                     continue
     return koordinat
-
 
 def tentukan_range(n, rank, size):
     total_pairs = n * (n - 1) // 2
@@ -39,7 +36,6 @@ def tentukan_range(n, rank, size):
             low = mid + 1
         else:
             high = mid
-
     start_i = low
 
     low = 0
@@ -47,20 +43,16 @@ def tentukan_range(n, rank, size):
 
     while low < high:
         mid = (low + high) // 2
-
         if pasangan_sebelum(mid) < target_end:
             low = mid + 1
         else:
             high = mid
-
     end_i = low
 
     return start_i, end_i
 
-
 def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
     n = len(koordinat)
-
     jumlah_interaksi = 0
     pasangan_dihitung = 0
 
@@ -68,9 +60,7 @@ def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
         xi, yi, zi = koordinat[i]
 
         for j in range(i + 1, n):
-
             xj, yj, zj = koordinat[j]
-
             dx = xi - xj
             dy = yi - yj
             dz = zi - zj
@@ -80,45 +70,34 @@ def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
                 dy * dy +
                 dz * dz
             )
-
             pasangan_dihitung += 1
 
             if jarak <= threshold:
                 jumlah_interaksi += 1
-
     return pasangan_dihitung, jumlah_interaksi
-
 
 def main():
 
     comm = MPI.COMM_WORLD
-
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    # Lokasi file dataset
+    #lokasi file dataset
     project_root = Path(__file__).resolve().parents[1]
-
     data_pdb = project_root / "data" / "1LJ4.pdb"
-
     threshold = 5.0
-
 
     #proses 0 membaca dataset
     if rank == 0:
         koordinat = baca_koordinat(data_pdb)
     else:
         koordinat = None
-
-
+        
     # distribusi data ke semua proses 
     koordinat = comm.bcast(koordinat, root=0)
-
     n = len(koordinat)
-
     total_pairs = n * (n - 1) // 2
-
-
+    
     #pembagian workloadnya 
     start_i, end_i = tentukan_range(
         n,
@@ -128,16 +107,12 @@ def main():
 
     # hitung jumlah pasangan yang menjadi tanggung jawab proses ini
     local_pairs = 0
-
     for i in range(start_i, min(end_i, n)):
         local_pairs += n - i - 1
 
-
     #mulai perhitunga 
     comm.Barrier()
-
     waktu_mulai = MPI.Wtime()
-
     local_pairs_count, local_interactions = hitung_interaksi_lokal(
         koordinat,
         start_i,
@@ -146,7 +121,6 @@ def main():
     )
 
     waktu_selesai = MPI.Wtime()
-
     local_runtime = waktu_selesai - waktu_mulai
 
     #kumpulan hasil
@@ -170,16 +144,13 @@ def main():
 
     #kumpulan pasangan dan interaksi
     # masing-masing process
-
     process_results = comm.gather(
         (local_pairs_count, local_interactions),
         root=0
     )
 
-
     #output 
     if rank == 0:
-
         print()
         print("==============================================")
         print("        MPI PROTEIN INTERACTION")
