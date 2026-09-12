@@ -61,6 +61,7 @@ def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
 
         for j in range(i + 1, n):
             xj, yj, zj = koordinat[j]
+            #jarak euclidean
             dx = xi - xj
             dy = yi - yj
             dz = zi - zj
@@ -105,12 +106,12 @@ def main():
         size
     )
 
-    # hitung jumlah pasangan yang menjadi tanggung jawab proses ini
+    # hitung jumlah pasangan 
     local_pairs = 0
     for i in range(start_i, min(end_i, n)):
         local_pairs += n - i - 1
 
-    #mulai perhitunga 
+    #mulai perhitungan
     comm.Barrier()
     waktu_mulai = MPI.Wtime()
     local_pairs_count, local_interactions = hitung_interaksi_lokal(
