@@ -61,6 +61,7 @@ def hitung_interaksi_lokal(koordinat, start_i, end_i, threshold):
 
         for j in range(i + 1, n):
             xj, yj, zj = koordinat[j]
+            
             #jarak euclidean
             dx = xi - xj
             dy = yi - yj
